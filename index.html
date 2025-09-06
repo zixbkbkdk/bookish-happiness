@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>彩色方块跳跃</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Arial Rounded MT Bold', 'Arial', sans-serif;
+            background: linear-gradient(135deg, #6e8efb, #a777e3);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            touch-action: manipulation;
+-webkit-tap-highlight-color：透明；
+        }
+        
+#game-container{
+宽度：90%；
+最大宽度：400px；
+高度：70vh；
+背景色：rgba(255，255，255，0.2)；
+边界半径：20px；
+背景滤镜：模糊(10px)；
+箱阴影：010px30px rgba(0，0，0，0.2)；
+溢出：隐藏；
+位置：相对；
+        }
+        
+#game-canvas{
+宽度：100%；
+高度：100%；
+显示：块；
+        }
+        
+#评分显示{
+位置：绝对；
+top:20px；
+左：0；
+右：0；
+文本对齐：居中；
+font-size:24px；
+颜色：白色；
+text-shadow:2px2px4px rgba(0，0，0，0.5)；
+Z指数：10；
+        }
+        
+#开始屏幕，#游戏结束{
+位置：绝对；
+top:0；
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 20;
+            color: white;
+            text-align: center;
+        }
+        
+        #game-over {
+            display: none;
+        }
+        
+        h1 {
+            font-size: 28px;
+            margin-bottom: 20px;
+            color: #ffcc00;
+        }
+        
+        button {
+            background: linear-gradient(to right, #ff9966, #ff5e62);
+            border: none;
+            border-radius: 50px;
+            padding: 15px 30px;
+            color: white;
+            font-size: 18px;
+            font-weight: bold;
+            margin-top: 20px;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            transition: transform 0.1s;
+        }
+        
+        button:active {
+            transform: scale(0.95);
+        }
+        
+        p {
+字体大小：18px；
+余量：10px20px；
+线高：1.5；
+        }
+        
+.Hidden{
+显示：无！重要；
+        }
+</style>
+</head>
+<body>
+<div id="游戏容器">
+<div id="score-display">分数：0</div>
+<canvas id="game-canvas"></canvas>
+        
+<div id="开始屏幕">
+<h1>彩色方块跳跃</h1>
+<p>点击屏幕让方块跳跃，避开障碍物！</p>
+<button id="start-button">开始游戏</button>
+</div>
+        
+<div id="游戏结束">
+<h1>游戏结束</h1>
+            <p>最终分数: <span id="final-score">0</span></p>
+            <button id="restart-button">再玩一次</button>
+        </div>
+    </div>
+
+    <script>
+        // 游戏变量
+        let canvas, ctx;
+        let player;
+        let obstacles = [];
+        let score = 0;
+        let gameSpeed = 2;
+        let gameRunning = false;
+        let animationId;
+        
+        // 玩家类
+        class Player {
+            constructor() {
+                this.width = 40;
+                this.height = 40;
+                this.x = 50;
+                this.y = canvas.height - this.height - 20;
+                this.jumpHeight = 100;
+                this.jumping = false;
+                this.jumpSpeed = 0;
+                this.gravity = 0.5;
+                this.color = '#FF6B6B';
+            }
+            
+            draw() {
+                ctx.fillStyle = this.color;
+                ctx.fillRect(this.x, this.y, this.width, this.height);
+                
+                // 添加一些细节
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+                ctx.fillRect(this.x + 5, this.y + 5, 15, 15);
+            }
+            
+            jump() {
+                if (!this.jumping) {
+                    this.jumping = true;
+                    this.jumpSpeed = -12;
+                }
+            }
+            
+            update() {
+                if (this.jumping) {
+                    this.y += this.jumpSpeed;
+                    this.jumpSpeed += this.gravity;
+                    
+                    if (this.y >= canvas.height - this.height - 20) {
+                        this.y = canvas.height - this.height - 20;
+                        this.jumping = false;
+                    }
+                }
+            }
+        }
+        
+        // 障碍物类
+        class Obstacle {
+            constructor() {
+                this.width = 20 + Math.random() * 30;
+                this.height = 30 + Math.random() * 50;
+                this.x = canvas.width;
+                this.y = canvas.height - this.height - 20;
+                this.speed = gameSpeed;
+                this.color = `hsl(${Math.random() * 360}, 70%, 60%)`;
+            }
+            
+draw(){
+ctx.fillStyle=this.color；
+ctx.fillRect(this.x，this.y，this.width，this.height)；
+            }
+            
+更新(){
+this.x-=this.speed；
+            }
+        }
+        
+// 初始化游戏
+函数init(){
+canvas=document.getElementById('game-canvas')；
+CTX=canvas.getContext('2d')；
+            
+// 设置画布尺寸
+canvas.width=canvas.offsetWidth；
+canvas.height=canvas.offsetHeight；
+            
+// 初始化玩家
+运动员=新的运动员()；
+            
+// 事件监听器
+文件。getElementById(“启动按钮”)。addEventListener('click'，StartGame)；
+文件。getElementById(“重启按钮”)。addEventListener('click'，restartGame)；
+canvas.addEventListener('click'，()=>{
+if(gameRunning)player.jump()；
+            });
+            
+// 触摸事件支持
+canvas.addEventListener('touchstart'，(e)=>{
+e.preventDefault()；
+if(gameRunning)player.jump()；
+            });
+        }
+        
+// 开始游戏
+函数StartGame(){
+文件。getElementById('开始屏幕').classList.Add('hidden')；
+gameRunning=true；
+得分=0；
+障碍物=[]；
+GameSpeed=2；
+updateScore()；
+gameloop()；
+        }
+        
+// 游戏循环
+函数gameloop(){
+// 清除画布
+CTX.clearRect(0，0，画布。宽度，画布。高度)；
+            
+// 绘制背景
+ctx.fillStyle='rgba(255，255，255，0.1)'；
+ctx.fillRect(0，0，canvas.width，canvas.height)；
+            
+// 绘制地面
+ctx.fillStyle='rgba(0，0.3)'；
+CTX.fillRect(0，canvas.height-20，canvas.width，20)；
+            
+// 更新和绘制玩家
+player.update()；
+player.draw()；
+            
+// 生成障碍物
+if(障碍物.长度======0||障碍物[障碍物.长度-1].x<画布.宽度-200){
+障碍.推动(新障碍())；
+            }
+            
+// 更新和绘制障碍物
+for(让i=0；i<障碍物.长度；我++){
+障碍[i].更新()；
+障碍[i].图纸()；
+                
+// 碰撞检测
+如果(
+player.x<障碍[i].x+障碍[i].宽度&&
+player.x+player.width>障碍[i].x&&
+该重力=0.5；
+this.color='#FF6B6B'；
+) {
+GameOver()；
+画(){
+ctx.fillStyle=this.color；
+CTX.fillRect(这个.x，这个.y，这个.宽度，这个。高度)；
+// 移除屏幕外的障碍物并增加分数
+// 添加一些细节
+ctx.fillStyle='rgba(255，255，255，0.3)'；
+ctx.fillRect(this.x+5，this.y+5，15，15)；
+updateScore()；
+左：0；
+跳(){
+if(！this.jumping){
+this.jumping=true；
+this.jumpSpeed=-12；
+}
+}
+this.x=画布宽度；
+更新(){
+if(this.jumping){
+this.y+=this.jumpSpeed；
+this.jumpSpeed+=this.gravity；
+// 更新分数显示
+if(this.y>=画布高度-this.height-20){
+this.y=画布高度-this.高度-20；
+this.jumping=false；
+        
+// 游戏结束
+函数GameOver(){
+gameRunning=false；
+cancelAnimationFrame(animationId)；
+// 障碍物类
+类障碍{
+构造函数(){
+this.width=20+Math.random()*30；
+this.height=30+Math.random()*50；
+this.x=画布宽度；
+this.y=画布高度-this.高度-20；
+this.speed=GameSpeed；
+这。color='hsl(${Math.random()*360}，70%，60%)'；
+canvas.height=canvas.offsetHeight；
+// 窗口加载时初始化游戏
+window.onload=init；
+盒阴影：04px10pxrgba(0，0，0，0.3)；
+// 窗口大小改变时调整画布
+window.addEventListener('resize'，()=>{
+if(画布){
+canvas.width=canvas.offsetWidth；
+canvas.height=canvas.offsetHeight；
+}
+});
+</script>
+</body>
+</html>
